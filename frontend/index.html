@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raio-X do Candidato</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #db2777 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up { animation: fadeInUp 0.5s ease-out; }
+        
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .scale-in { animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* ============ NOTA CIRCULAR (TELA) ============ */
+        .nota-circle {
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            position: relative;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .nota-numero {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 96px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 0;
+            padding: 0;
+            letter-spacing: -4px;
+            display: block;
+        }
+
+        .nota-label {
+            position: absolute;
+            bottom: 55px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0.9;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+            display: block;
+        }
+
+        .nota-verde { background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); }
+        .nota-amarelo { background: linear-gradient(135deg, #eab308 0%, #a16207 100%); }
+        .nota-laranja { background: linear-gradient(135deg, #f97316 0%, #c2410c 100%); }
+        .nota-vermelho { background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); }
+
+        .card-hover { transition: all 0.3s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+
+        .loading {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #share-card { position: fixed; left: -9999px; top: 0; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+<div class="max-w-4xl mx-auto">
+
+    <!-- ============ HEADER ============ -->
+    <div class="text-center mb-8 fade-in-up">
+        <div class="inline-block mb-4 bg-white/20 backdrop-blur-lg rounded-2xl px-6 py-3">
+            <h1 class="text-3xl md:text-5xl font-black text-white">
+                🔍 Raio-X do Candidato
+            </h1>
+        </div>
+        <p class="text-white text-lg md:text-xl font-semibold">
+            Descubra quem está por trás do seu voto
+        </p>
+        <p class="text-white/80 text-sm mt-2">
+            Dados públicos oficiais • Linguagem simples • Sem juridiquês
+        </p>
+    </div>
+
+    <!-- ============ BUSCA ============ -->
+    <div class="glass rounded-2xl p-6 mb-6 fade-in-up">
+        <div class="flex flex-col md:flex-row gap-3">
+            <input type="text" id="busca" 
+                placeholder="Digite o nome de um político..."
+                class="flex-1 p-4 rounded-xl border-2 border-gray-200 focus:border-purple-500 outline-none text-lg"
+                autofocus>
+            <button onclick="buscar()" id="btn-buscar"
+                class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all">
+                Consultar
+            </button>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 text-center">
+            ⓘ Os resultados são <strong>indícios</strong>, não provas. Todos os dados são públicos.
+        </p>
+    </div>
+
+    <!-- ============ RANKING ============ -->
+    <div class="glass rounded-2xl p-6 mb-6 fade-in-up">
+        <div class="flex items-center gap-3 mb-5">
+            <span class="text-2xl">🏆</span>
+            <h2 class="text-2xl font-black text-gray-800">Ranking de Transparência</h2>
+        </div>
+
+        <!-- Filtros unificados -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+            <select id="filtro-estado" class="p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 outline-none bg-white text-sm">
+                <option value="">📍 Estado</option>
+            </select>
+            <select id="filtro-partido" class="p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 outline-none bg-white text-sm">
+                <option value="">🏛️ Partido</option>
+            </select>
+            <select id="filtro-cargo" class="p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 outline-none bg-white text-sm">
+                <option value="">🎯 Cargo</option>
+            </select>
+            <select id="filtro-ano" class="p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 outline-none bg-white text-sm">
+                <option value="">📅 Ano</option>
+            </select>
+            <select id="filtro-ordem" class="p-3 rounded-lg border-2 border-purple-300 focus:border-purple-500 outline-none bg-white text-sm font-semibold text-purple-700">
+                <option value="pior">🔴 Mais Alertas</option>
+                <option value="melhor">🟢 Mais Transparentes</option>
+            </select>
+            <button onclick="limparFiltros()" class="p-3 rounded-lg border-2 border-gray-200 hover:border-red-400 hover:bg-red-50 outline-none bg-white text-sm font-bold text-gray-600 transition-all">
+                ✕ Limpar
+            </button>
+        </div>
+
+        <!-- Filtros por nível -->
+        <div class="flex gap-2 flex-wrap mb-4">
+            <button onclick="setNivel('')" id="btn-nivel-todos"
+                class="px-4 py-2 rounded-lg font-bold text-sm bg-purple-600 text-white">
+                Todos
+            </button>
+            <button onclick="setNivel('verde')" id="btn-nivel-verde"
+                class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-700">
+                🟢 Poucos alertas
+            </button>
+            <button onclick="setNivel('amarelo')" id="btn-nivel-amarelo"
+                class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-700">
+                🟡 Atenção
+            </button>
+            <button onclick="setNivel('laranja')" id="btn-nivel-laranja"
+                class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-700">
+                🟠 Vários
+            </button>
+            <button onclick="setNivel('vermelho')" id="btn-nivel-vermelho"
+                class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-700">
+                🔴 Muitos
+            </button>
+        </div>
+
+        <div id="ranking" class="space-y-3">
+            <div class="text-center py-8">
+                <span class="loading" style="border-top-color: #7c3aed;"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultado"></div>
+    <div id="detalhes"></div>
+
+    <div class="text-center mt-12 text-white/70 text-sm">
+        <p>Projeto open-source • Baseado no EloSys • TSE, CGU, Receita Federal</p>
+    </div>
+</div>
+
+<!-- ============ CARD PARA COMPARTILHAR ============ -->
+<div id="share-card" style="width: 1080px; height: 1920px; padding: 0; color: white; overflow: hidden;">
+    <div id="share-content"></div>
+</div>
+
+<script>
+// ============ CONFIG ============
+const API = "http://192.168.0.2:8000";
+
+// ============ UTILITÁRIOS ============
+function formatarReais(valor) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+}
+
+function formatarNumero(n) {
+    return n.toLocaleString('pt-BR');
+}
+
+// ============ BUSCA ============
+document.getElementById('busca').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') buscar();
+});
+
+async function buscar() {
+    const q = document.getElementById('busca').value.trim();
+    if (q.length < 3) { alert('Digite pelo menos 3 letras'); return; }
+
+    const btn = document.getElementById('btn-buscar');
+    btn.innerHTML = '<span class="loading"></span>';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API}/api/buscar?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        
+        const div = document.getElementById('resultado');
+        document.getElementById('detalhes').innerHTML = '';
+
+        if (data.candidatos.length === 0) {
+            div.innerHTML = `
+                <div class="glass rounded-2xl p-8 text-center fade-in-up">
+                    <p class="text-5xl mb-4">🔍</p>
+                    <p class="text-gray-600 text-lg">Nenhum candidato encontrado</p>
+                    <p class="text-gray-400 text-sm mt-2">Tente outro nome ou verifique a grafia.</p>
+                </div>`;
+            return;
+        }
+
+        div.innerHTML = `
+            <p class="text-white font-medium mb-3">
+                ${data.candidatos.length} resultado(s):
+            </p>
+        ` + data.candidatos.map((c, i) => `
+            <div class="glass rounded-xl p-5 mb-3 cursor-pointer card-hover fade-in-up"
+                 style="animation-delay: ${i * 0.05}s"
+                 onclick="verDetalhes(${c.id})">
+                <div class="flex justify-between items-start gap-4">
+                    <div class="flex-1">
+                        <h2 class="font-bold text-lg text-gray-900">${c.nome}</h2>
+                        ${c.nome_urna && c.nome_urna !== c.nome ? 
+                            `<p class="text-gray-500 text-sm">"${c.nome_urna}"</p>` : ''}
+                    </div>
+                    <span class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                        ${c.partido || '?'}-${c.estado || '?'}
+                    </span>
+                </div>
+                <div class="flex items-center gap-3 mt-3 text-sm text-gray-600">
+                    <span>🎯 ${c.cargo || '?'}</span>
+                    <span>📅 ${c.ano || '?'}</span>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao buscar. O backend está rodando?');
+    } finally {
+        btn.innerHTML = 'Consultar';
+        btn.disabled = false;
+    }
+}
+
+// ============ DETALHES DO CANDIDATO ============
+async function verDetalhes(id) {
+    const div = document.getElementById('detalhes');
+    div.innerHTML = `
+        <div class="glass rounded-2xl p-12 text-center mt-6 fade-in-up">
+            <span class="loading" style="border-top-color: #7c3aed; width: 40px; height: 40px;"></span>
+            <p class="text-gray-600 mt-4 text-lg">Analisando dados...</p>
+        </div>`;
+
+    try {
+        const res = await fetch(`${API}/api/candidato/${id}`);
+        const data = await res.json();
+
+        const notaClass = `nota-${data.nota.cor}`;
+        const corTitulo = data.nota.cor === 'verde' ? '#15803d' : 
+                          data.nota.cor === 'amarelo' ? '#a16207' : 
+                          data.nota.cor === 'laranja' ? '#c2410c' : '#991b1b';
+
+        div.innerHTML = `
+            <div class="glass rounded-3xl overflow-hidden mt-6 fade-in-up shadow-2xl">
+
+                <!-- NOTA CIRCULAR -->
+                <div class="bg-gray-50 pt-8 pb-6 px-6 text-center">
+                    <div class="${notaClass} nota-circle scale-in mx-auto pulse">
+                        <p class="nota-numero">${data.nota.nota}</p>
+                        <p class="nota-label">de 100</p>
+                    </div>
+                    <h2 class="text-2xl font-black text-gray-900 mt-4">${data.nome}</h2>
+                    <p class="text-lg font-bold mt-2" style="color: ${corTitulo}">
+                        ${data.nota.emoji} ${data.nota.titulo}
+                    </p>
+                </div>
+
+                <!-- RESUMO -->
+                <div class="p-6 bg-blue-50 border-t-4 border-blue-500">
+                    <h3 class="font-bold text-gray-800 mb-3 text-lg flex items-center gap-2">
+                        📖 O que isso significa?
+                    </h3>
+                    <div class="space-y-2 text-gray-700">
+                        ${data.resumo.map((frase, i) => `
+                            <p class="flex gap-3">
+                                <span class="font-bold text-blue-600">${i+1}.</span>
+                                <span>${frase}</span>
+                            </p>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-blue-50 rounded-2xl p-5 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase">💰 Doações</p>
+                            <p class="text-2xl font-black text-blue-700 mt-1">${formatarReais(data.doacoes.total_reais)}</p>
+                            <p class="text-xs text-gray-500">${formatarNumero(data.doacoes.quantidade)} doações</p>
+                        </div>
+                        <div class="bg-green-50 rounded-2xl p-5 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase">🏠 Bens</p>
+                            <p class="text-2xl font-black text-green-700 mt-1">${formatarReais(data.bens.total_reais)}</p>
+                            <p class="text-xs text-gray-500">${formatarNumero(data.bens.quantidade)} bens</p>
+                        </div>
+                    </div>
+
+                    <!-- ANALOGIAS -->
+                    ${data.analogias.length > 0 ? `
+                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 mb-6">
+                            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                🎯 Traduzindo para o dia a dia
+                            </h3>
+                            <div class="space-y-3">
+                                ${data.analogias.map(a => `
+                                    <div class="flex items-center gap-4 bg-white rounded-xl p-3">
+                                        <span class="text-3xl">${a.icone}</span>
+                                        <div>
+                                            <p class="text-gray-500 text-xs">${a.descricao}</p>
+                                            <p class="font-black text-gray-900 text-lg">${a.texto}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- SINAIS -->
+                    ${data.sinais.length > 0 ? `
+                        <div class="mb-6">
+                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                ⚠️ Pontos de atenção (${formatarNumero(data.total_sinais)})
+                            </h3>
+                            <div class="space-y-3">
+                                ${data.sinais.slice(0, 5).map(s => `
+                                    <div class="border-l-4 ${s.severity === 'high' ? 'border-red-500 bg-red-50' : s.severity === 'medium' ? 'border-yellow-500 bg-yellow-50' : 'border-gray-300 bg-gray-50'} p-4 rounded-r-xl">
+                                        <p class="font-bold text-gray-900">${s.titulo_simples}</p>
+                                        <p class="text-sm text-gray-700 mt-1">${s.explicacao_simples}</p>
+                                        <p class="text-xs text-gray-500 mt-2 italic">
+                                            💡 Por que importa: ${s.porque_importa}
+                                        </p>
+                                        ${s.amount_cents ? `
+                                            <p class="text-sm font-bold text-gray-700 mt-2">
+                                                💰 Valor envolvido: ${formatarReais(s.amount_cents/100)}
+                                            </p>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-xl mb-6">
+                            <p class="font-bold text-green-800">✅ Nenhum sinal de alerta encontrado</p>
+                            <p class="text-sm text-green-700 mt-1">
+                                Não foram detectados padrões atípicos nas contas deste candidato.
+                            </p>
+                        </div>
+                    `}
+
+                    <!-- HISTÓRICO -->
+                    <div class="border-t pt-4">
+                        <h3 class="font-bold text-gray-800 mb-3">📜 Histórico</h3>
+                        <div class="space-y-2">
+                            ${data.historico.slice(0, 6).map(h => `
+                                <div class="flex items-center gap-3 text-sm py-2 border-b border-gray-100 last:border-0">
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold text-xs">${h.year}</span>
+                                    <span class="flex-1 text-gray-700">${h.office}</span>
+                                    <span class="text-gray-500 text-xs">${h.party_abbr}-${h.state}</span>
+                                    ${h.result ? `<span class="text-xs font-bold ${h.result === 'ELEITO' ? 'text-green-600' : 'text-gray-500'}">${h.result}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- AÇÕES -->
+                    <div class="mt-6 flex flex-col md:flex-row gap-3">
+                        <button onclick="compartilharStory()"
+                            class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 rounded-xl font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                            📸 Compartilhar no Story
+                        </button>
+                        <button onclick="compartilharTexto()"
+                            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                            💬 Enviar no WhatsApp
+                        </button>
+                        <button onclick="document.getElementById('detalhes').innerHTML=''"
+                            class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        window._dadosAtuais = data;
+        div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (e) {
+        console.error(e);
+        div.innerHTML = `<div class="glass rounded-2xl p-6 mt-6 text-center text-red-500">Erro ao carregar</div>`;
+    }
+}
+
+// ============ COMPARTILHAR STORY ============
+async function compartilharStory() {
+    const data = window._dadosAtuais;
+    if (!data) return;
+
+    const gradientes = {
+        'verde': 'linear-gradient(160deg, #22c55e 0%, #15803d 100%)',
+        'amarelo': 'linear-gradient(160deg, #eab308 0%, #a16207 100%)',
+        'laranja': 'linear-gradient(160deg, #f97316 0%, #c2410c 100%)',
+        'vermelho': 'linear-gradient(160deg, #ef4444 0%, #7f1d1d 100%)'
+    };
+
+    const shareContent = document.getElementById('share-content');
+    const shareCard = document.getElementById('share-card');
+    shareCard.style.background = gradientes[data.nota.cor];
+
+    shareContent.innerHTML = `
+        <div style="font-family: Inter, sans-serif; color: white; height: 1920px; display: flex; flex-direction: column; padding: 80px 60px;">
+            
+            <!-- TOPO -->
+            <div style="text-align: center; margin-bottom: 50px;">
+                <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 20px 40px; border-radius: 60px; font-size: 28px; font-weight: 700;">
+                    🔍 RAIO-X DO CANDIDATO
+                </div>
+            </div>
+
+            <!-- NOTA CIRCULAR -->
+            <div style="text-align: center; margin-bottom: 50px;">
+                <div style="width: 380px; height: 380px; border-radius: 50%; background: rgba(255,255,255,0.15); margin: 0 auto; position: relative; border: 8px solid rgba(255,255,255,0.3); padding: 0; box-sizing: border-box;">
+                    <p style="position: absolute; top: 90px; left: 0; right: 0; text-align: center; font-size: 160px; font-weight: 900; margin: 0; line-height: 1; letter-spacing: -6px; display: block;">${data.nota.nota}</p>
+                    <p style="position: absolute; bottom: 90px; left: 0; right: 0; text-align: center; font-size: 32px; opacity: 0.9; margin: 0; font-weight: 600; line-height: 1; display: block;">de 100</p>
+                </div>
+                <p style="font-size: 40px; font-weight: 900; margin: 35px 0 0 0;">${data.nota.emoji} ${data.nota.titulo.toUpperCase()}</p>
+            </div>
+
+            <!-- NOME -->
+            <div style="text-align: center; margin-bottom: 50px;">
+                <p style="font-size: 22px; opacity: 0.8; margin: 0 0 10px 0;">CANDIDATO</p>
+                <h1 style="font-size: 46px; font-weight: 900; line-height: 1.15; margin: 0; word-break: break-word;">
+                    ${data.nome}
+                </h1>
+            </div>
+
+            <!-- STATS -->
+            <div style="display: flex; gap: 25px; margin-bottom: 40px;">
+                <div style="flex: 1; background: rgba(255,255,255,0.15); border-radius: 28px; padding: 30px; text-align: center;">
+                    <p style="font-size: 20px; opacity: 0.8; margin: 0 0 12px 0;">💰 DOAÇÕES</p>
+                    <p style="font-size: 28px; font-weight: 900; margin: 0;">${formatarReais(data.doacoes.total_reais)}</p>
+                </div>
+                <div style="flex: 1; background: rgba(255,255,255,0.15); border-radius: 28px; padding: 30px; text-align: center;">
+                    <p style="font-size: 20px; opacity: 0.8; margin: 0 0 12px 0;">🏠 BENS</p>
+                    <p style="font-size: 28px; font-weight: 900; margin: 0;">${formatarReais(data.bens.total_reais)}</p>
+                </div>
+            </div>
+
+            <!-- ANALOGIA -->
+            ${data.analogias.length > 0 ? `
+                <div style="background: rgba(0,0,0,0.2); border-radius: 28px; padding: 35px; margin-bottom: 35px; text-align: center;">
+                    <p style="font-size: 24px; font-weight: 700; margin: 0 0 15px 0;">🎯 Isso equivale a...</p>
+                    <p style="font-size: 36px; font-weight: 900; margin: 0; line-height: 1.3;">
+                        ${data.analogias[0].icone} ${data.analogias[0].texto}
+                    </p>
+                </div>
+            ` : ''}
+
+            <!-- FRASE RESUMO -->
+            <div style="background: rgba(0,0,0,0.2); border-radius: 28px; padding: 35px; margin-top: auto;">
+                <p style="font-size: 24px; line-height: 1.4; margin: 0; font-weight: 600;">
+                    "${data.resumo[data.resumo.length - 1]}"
+                </p>
+            </div>
+
+            <!-- RODAPÉ -->
+            <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 3px solid rgba(255,255,255,0.2);">
+                <p style="font-size: 26px; font-weight: 700; margin: 0 0 12px 0;">🔍 Consulte você também</p>
+                <p style="font-size: 20px; opacity: 0.85; margin: 0;">Dados públicos • TSE, CGU, Receita Federal</p>
+            </div>
+        </div>
+    `;
+
+    await new Promise(r => setTimeout(r, 200));
+
+    try {
+        const canvas = await html2canvas(shareCard, {
+            width: 1080, height: 1920, scale: 1, backgroundColor: null, useCORS: true
+        });
+
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], `raiox-${data.nome.replace(/\s+/g, '-')}.png`, { type: 'image/png' });
+            
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: `Raio-X de ${data.nome}` });
+                    return;
+                } catch (e) {}
+            }
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `raiox-${data.nome.replace(/\s+/g, '-')}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setTimeout(() => alert('📸 Imagem salva! Poste nos Stories ou envie no WhatsApp.'), 500);
+        });
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao gerar imagem.');
+    }
+}
+
+// ============ COMPARTILHAR TEXTO ============
+function compartilharTexto() {
+    const data = window._dadosAtuais;
+    if (!data) return;
+
+    const texto = 
+`${data.nota.emoji} *RAIO-X DO CANDIDATO*
+
+━━━━━━━━━━━━━━━━━━━━
+
+👤 *${data.nome.toUpperCase()}*
+
+📊 *NOTA: ${data.nota.nota}/100*
+${data.nota.emoji} _${data.nota.titulo}_
+
+━━━━━━━━━━━━━━━━━━━━
+
+💰 Doações: *${formatarReais(data.doacoes.total_reais)}*
+🏠 Bens: *${formatarReais(data.bens.total_reais)}*
+
+${data.analogias.length > 0 ? 
+`🎯 *Isso equivale a ${data.analogias[0].texto}*` : ''}
+
+━━━━━━━━━━━━━━━━━━━━
+
+📖 *O QUE ISSO SIGNIFICA?*
+
+${data.resumo.map((f, i) => `${i+1}. ${f}`).join('\n\n')}
+
+━━━━━━━━━━━━━━━━━━━━
+
+${data.total_sinais > 0 ? 
+`⚠️ *${data.total_sinais} pontos de atenção encontrados*` : 
+`✅ *Nenhum ponto de atenção*`}
+
+━━━━━━━━━━━━━━━━━━━━
+
+🔍 Consulte você também!
+_Dados públicos: TSE, CGU, Receita Federal_
+
+⚠️ _Indícios, não provas._`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+}
+
+// ============ FILTROS ============
+let filtrosAtuais = {
+    estado: "",
+    partido: "",
+    cargo: "",
+    ano: "",
+    nivel: "",
+    ordem: "pior",
+};
+
+async function carregarFiltros() {
+    try {
+        const res = await fetch(`${API}/api/filtros`);
+        const data = await res.json();
+
+        const selEstado = document.getElementById('filtro-estado');
+        data.estados.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e;
+            opt.textContent = `📍 ${e}`;
+            selEstado.appendChild(opt);
+        });
+
+        const selPartido = document.getElementById('filtro-partido');
+        data.partidos.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = `🏛️ ${p}`;
+            selPartido.appendChild(opt);
+        });
+
+        const selCargo = document.getElementById('filtro-cargo');
+        data.cargos.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = `🎯 ${c}`;
+            selCargo.appendChild(opt);
+        });
+
+        const selAno = document.getElementById('filtro-ano');
+        data.anos.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = `📅 ${a}`;
+            selAno.appendChild(opt);
+        });
+
+        // Listeners
+        selEstado.addEventListener('change', (e) => { filtrosAtuais.estado = e.target.value; carregarRanking(); });
+        selPartido.addEventListener('change', (e) => { filtrosAtuais.partido = e.target.value; carregarRanking(); });
+        selCargo.addEventListener('change', (e) => { filtrosAtuais.cargo = e.target.value; carregarRanking(); });
+        selAno.addEventListener('change', (e) => { filtrosAtuais.ano = e.target.value; carregarRanking(); });
+        document.getElementById('filtro-ordem').addEventListener('change', (e) => { filtrosAtuais.ordem = e.target.value; carregarRanking(); });
+    } catch (e) {
+        console.error('Erro ao carregar filtros:', e);
+    }
+}
+
+function setNivel(nivel) {
+    filtrosAtuais.nivel = nivel;
+    const niveis = ['todos', 'verde', 'amarelo', 'laranja', 'vermelho'];
+    niveis.forEach(n => {
+        const btn = document.getElementById(`btn-nivel-${n}`);
+        if (!btn) return;
+        const ativo = (n === 'todos' && nivel === '') || (n === nivel);
+        btn.className = ativo
+            ? 'px-4 py-2 rounded-lg font-bold text-sm bg-purple-600 text-white'
+            : 'px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-700';
+    });
+    carregarRanking();
+}
+
+function limparFiltros() {
+    // Resetar selects
+    document.getElementById('filtro-estado').value = '';
+    document.getElementById('filtro-partido').value = '';
+    document.getElementById('filtro-cargo').value = '';
+    document.getElementById('filtro-ano').value = '';
+    document.getElementById('filtro-ordem').value = 'pior';
+
+    // Resetar estado
+    filtrosAtuais.estado = '';
+    filtrosAtuais.partido = '';
+    filtrosAtuais.cargo = '';
+    filtrosAtuais.ano = '';
+    filtrosAtuais.ordem = 'pior';
+
+    // Resetar nível
+    setNivel('');
+}
+
+async function carregarRanking() {
+    const div = document.getElementById('ranking');
+    div.innerHTML = '<div class="text-center py-8"><span class="loading" style="border-top-color: #7c3aed;"></span></div>';
+
+    try {
+        const params = new URLSearchParams();
+        if (filtrosAtuais.estado) params.append('estado', filtrosAtuais.estado);
+        if (filtrosAtuais.partido) params.append('partido', filtrosAtuais.partido);
+        if (filtrosAtuais.cargo) params.append('cargo', filtrosAtuais.cargo);
+        if (filtrosAtuais.ano) params.append('ano', filtrosAtuais.ano);
+        if (filtrosAtuais.nivel) params.append('nivel', filtrosAtuais.nivel);
+        params.append('ordem', filtrosAtuais.ordem);
+        params.append('limit', '30');
+
+        const res = await fetch(`${API}/api/ranking?${params}`);
+        const data = await res.json();
+
+        if (data.candidatos.length === 0) {
+            div.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-4xl mb-3">🔍</p>
+                    <p>Nenhum candidato encontrado com esses filtros.</p>
+                </div>`;
+            return;
+        }
+
+        div.innerHTML = data.candidatos.map((c, i) => {
+            const cores = {
+                verde: 'bg-green-50 border-green-500',
+                amarelo: 'bg-yellow-50 border-yellow-500',
+                laranja: 'bg-orange-50 border-orange-500',
+                vermelho: 'bg-red-50 border-red-500',
+            };
+            const coresTexto = {
+                verde: 'text-green-700',
+                amarelo: 'text-yellow-700',
+                laranja: 'text-orange-700',
+                vermelho: 'text-red-700',
+            };
+            const emoji = { verde: '🟢', amarelo: '🟡', laranja: '🟠', vermelho: '🔴' };
+            const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+
+            return `
+                <div class="border-l-4 ${cores[c.cor]} ${cores[c.cor].split(' ')[0]} p-4 rounded-r-xl cursor-pointer card-hover fade-in-up"
+                     style="animation-delay: ${i * 0.03}s"
+                     onclick="verDetalhes(${c.id})">
+                    <div class="flex items-center gap-4">
+                        <div class="text-3xl font-black ${coresTexto[c.cor]} w-16 text-center">
+                            ${medalha || c.nota}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-gray-900 truncate">${c.nome}</p>
+                            <p class="text-sm text-gray-600">
+                                ${emoji[c.cor]} Nota ${c.nota}/100 • 
+                                ${c.partido || '?'}-${c.estado || '?'} • 
+                                ${c.cargo || '?'} ${c.ano ? `(${c.ano})` : ''}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                ⚠️ ${c.total_sinais} sinal(is) de alerta
+                            </p>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+    } catch (e) {
+        console.error(e);
+        div.innerHTML = '<p class="text-center text-red-500 py-8">Erro ao carregar ranking</p>';
+    }
+}
+
+// ============ INICIALIZAÇÃO ============
+window.addEventListener('load', () => {
+    carregarFiltros();
+    carregarRanking();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('detalhes').innerHTML = '';
+});
+</script>
+</body>
+</html>

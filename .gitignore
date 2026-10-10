@@ -1,0 +1,80 @@
+# banco de dados — distribuído como release, não versionado (ver ADs/banco.md)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# downloads temporários do TSE / outras fontes (não guardamos o payload — ver ADs/confiabilidade.md §2)
+/dados_tmp/
+*.zip
+
+# logs de execução ad-hoc de crawlers (o *_report.json formal é o que se versiona)
+*.log
+
+# estado local/efêmero do Claude Code, não do projeto
+.claude/scheduled_tasks.lock
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# segredos — a chave da DeepSeek (ai-review) vai só por variável de ambiente
+.env
+.env.*
+
+# ============ BANCO DE DADOS (NÃO SUBIR!) ============
+dados/
+*.db
+*.sqlite
+*.sqlite3
+elosys.db
+
+# ============ PYTHON ============
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.env
+
+# ============ NODE ============
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-error.log*
+
+# ============ IDE ============
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============ SISTEMA ============
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ============ LOGS ============
+*.log
+logs/
+nohup.out
+
+# ============ DADOS TEMPORÁRIOS ============
+dados_tmp/
+temp/
+tmp/
